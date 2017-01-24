@@ -4,6 +4,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class Crawler {
 	
@@ -11,6 +12,7 @@ public class Crawler {
 	static BlockingQueue<String> sharedQueue = new LinkedBlockingQueue<>();
 	
 	public static void main(String[] args) {
+		
 		if (args.length != 3) {
 			System.out.println("Usage: Crawler baseUrl #workers #pagesToScan");
 			return;
@@ -31,17 +33,21 @@ public class Crawler {
 			for(int i=0;i< workers;i++){
 				executor.execute(new SingleSiteCrawler(i,sharedQueue));
 			}
-	        executor.shutdown();
-	        while (!executor.isTerminated()) {
-	        }
+			
+	        try {
+	        	while(CounterOfCrawledSites.shouldContinue()){
+	        		
+	        	}
+	        	executor.awaitTermination(10, TimeUnit.SECONDS);
+	        	executor.shutdownNow();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	        System.out.println("Finished all threads");
 			
 
 		}
-		/**
-		 * Start your code here
-		 */
-		System.out.println("Implement me");
 	}
 
 }

@@ -2,11 +2,19 @@ package com.bizzabo.task;
 
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class CounterOfCrawledSites {
-	private final int maxNumberOfSitesToCrawl;
+	private static final ReadWriteLock lock =  new ReentrantReadWriteLock(); 
+	private static int maxNumberOfSitesToCrawl = 0;
+
+
 	public AtomicInteger counter = new AtomicInteger(0);
-	ConcurrentSkipListSet<String> visitedUrls = new ConcurrentSkipListSet<>();
+	static boolean shouldContinue = true;
+	private static ConcurrentSkipListSet<String> visitedUrls = new ConcurrentSkipListSet<>();
+	
+	private static CounterOfCrawledSites instance = null;
 	
 	/** Will return false once the max number of sites were visited	
 	 * 
@@ -17,7 +25,8 @@ public class CounterOfCrawledSites {
 	public boolean addVisitedSite(String url){
 		synchronized (this) {
 			visitedUrls.add(url);
-			if(maxNumberOfSitesToCrawl == counter.getAndIncrement()){
+			if(maxNumberOfSitesToCrawl <= counter.getAndIncrement()){
+				stop();
 				return false;
 			}
 			else{
@@ -26,7 +35,9 @@ public class CounterOfCrawledSites {
 		}
 		
 	}
-	private static CounterOfCrawledSites instance = null;
+	public static int getMaxNumberOfSitesToCrawl() {
+		return maxNumberOfSitesToCrawl;
+	}
 	
 	public static CounterOfCrawledSites getCounter(int maxNumber){
 		if(instance==null){
@@ -45,5 +56,22 @@ public class CounterOfCrawledSites {
 	
 	private CounterOfCrawledSites(int maxNumber){
 		maxNumberOfSitesToCrawl = maxNumber;
+	}
+	
+	public static boolean shouldContinue(){
+		lock.readLock().lock();
+		boolean answer = shouldContinue;
+		lock.readLock().unlock();
+		return answer;
+	}
+	
+	public static void stop(){
+		lock.writeLock().lock();
+		shouldContinue = false;
+		lock.writeLock().unlock();
+	}
+	
+	public static boolean isAlreadyVisited(String url){
+		return visitedUrls.contains(url);
 	}
 }
